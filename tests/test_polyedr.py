@@ -35,4 +35,4 @@ class TestPolyedr(unittest.TestCase):
         self.assertEqual(len(self.polyedr.facets), 4)
 
     def test_num_edges(self):
-        self.assertEqual(len(self.polyedr.edges), 16)
+        self.assertEqual(len(self.polyedr.edges), 12)

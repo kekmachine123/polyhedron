@@ -1,4 +1,4 @@
-from math import pi
+from math import pi, sqrt
 from functools import reduce
 from operator import add
 from common.r3 import R3
@@ -80,6 +80,19 @@ class Edge:
         x = - f0 / (f1 - f0)
         return Segment(Edge.SBEG, x) if f0 < 0.0 else Segment(x, Edge.SFIN)
 
+    def is_fully_visible(self):
+        res = len(self.gaps) == 1 and self.gaps[0].beg <= Edge.SBEG \
+            + 1e-5 and self.gaps[0].fin >= Edge.SFIN - 1e-5
+        return res
+
+    def g(self):
+        p = 0.0
+        if not self.is_fully_visible():
+            for s in self.gaps:
+                p += sqrt((self.r3(s.beg).x - self.r3(s.fin).x) ** 2 +
+                          (self.r3(s.beg).y - self.r3(s.fin).y) ** 2)
+        return p
+
 
 class Facet:
     """ Грань полиэдра """
@@ -124,6 +137,8 @@ class Polyedr:
 
     # Параметры конструктора: файл, задающий полиэдр
     def __init__(self, file):
+        # искомая величина
+        self.p = 0.0
 
         # списки вершин, рёбер и граней полиэдра
         self.vertexes, self.edges, self.facets = [], [], []
@@ -135,7 +150,7 @@ class Polyedr:
                     # обрабатываем первую строку; buf - вспомогательный массив
                     buf = line.split()
                     # коэффициент гомотетии
-                    c = float(buf.pop(0))
+                    self.c = float(buf.pop(0))
                     # углы Эйлера, определяющие вращение
                     alpha, beta, gamma = (float(x) * pi / 180.0 for x in buf)
                 elif i == 1:
@@ -145,7 +160,7 @@ class Polyedr:
                     # задание всех вершин полиэдра
                     x, y, z = (float(x) for x in line.split())
                     self.vertexes.append(R3(x, y, z).rz(
-                        alpha).ry(beta).rz(gamma) * c)
+                        alpha).ry(beta).rz(gamma) * self.c)
                 else:
                     # вспомогательный массив
                     buf = line.split()
@@ -158,12 +173,37 @@ class Polyedr:
                         self.edges.append(Edge(vertexes[n - 1], vertexes[n]))
                     # задание самой грани
                     self.facets.append(Facet(vertexes))
+        self.edges_uniq()
+
+    def edges_uniq(self):
+        edges = []
+        for e in self.edges:
+            include = False
+            for d in edges:
+                if ((d.beg == e.beg and d.fin == e.fin) or
+                        (d.beg == e.fin and d.fin == e.beg)):
+                    include = True
+                    break
+            if not include:
+                edges.append(e)
+        self.edges = edges
+
+    def shadow(self):
+        for e in self.edges:
+            for f in self.facets:
+                e.shadow(f)
+            center = e.r3(0.5)
+            if center.x < -0.5 * self.c or center.x > 0.5 * self.c \
+                or center.y < -0.5 * self.c or \
+                    center.y > 0.5 * self.c or center.z < -0.5 * self.c \
+                or center.z > 0.5 * self.c:
+                self.p += (e.g() / self.c)
 
     # Метод изображения полиэдра
     def draw(self, tk):  # pragma: no cover
         tk.clean()
+        self.shadow()
+        print(f"Искомая величина: {self.p}")
         for e in self.edges:
-            for f in self.facets:
-                e.shadow(f)
             for s in e.gaps:
                 tk.draw_line(e.r3(s.beg), e.r3(s.fin))
