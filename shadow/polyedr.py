@@ -194,9 +194,9 @@ class Polyedr:
                 e.shadow(f)
             center = e.r3(0.5)
             if center.x < -0.5 * self.c or center.x > 0.5 * self.c \
-                or center.y < -0.5 * self.c or \
+                    or center.y < -0.5 * self.c or \
                     center.y > 0.5 * self.c or center.z < -0.5 * self.c \
-                or center.z > 0.5 * self.c:
+                    or center.z > 0.5 * self.c:
                 self.p += (e.g() / self.c)
 
     # Метод изображения полиэдра
